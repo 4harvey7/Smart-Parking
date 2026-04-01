@@ -6,25 +6,50 @@
     <title>Smart Parking Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; background-color: #f8f9fa; }
+        
+        /* Header & Logout Button */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;}
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        .btn-logout { background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s;}
+        .btn-logout:hover { background-color: #c82333; }
+
+        /* Slots */
         .status-container { display: flex; gap: 20px; margin-bottom: 30px; }
         .slot { padding: 30px; border-radius: 10px; font-weight: bold; color: white; width: 150px; text-align: center; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: 0.3s; }
         .available { background-color: #28a745; } 
         .occupied { background-color: #dc3545; }  
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        /* Tables */
+        .table-responsive { width: 100%; overflow-x: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 30px; border-radius: 5px;}
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 500px; }
         th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #007bff; color: white; }
+        th { background-color: #007bff; color: white; position: sticky; top: 0; z-index: 1;}
+
+        /* Responsive Mobile Design */
+        @media (max-width: 600px) {
+            body { margin: 15px; }
+            .header { flex-direction: column; text-align: center; gap: 15px; }
+            .header-controls { flex-direction: column; width: 100%; }
+            .btn-logout { width: 100%; }
+            .status-container { flex-direction: column; width: 100%; }
+            .slot { width: auto; flex: 1; }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>🚗 Live Smart Parking Dashboard</h2>
-        <div><span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">System Online</span></div>
+        <h2>🚗 Live Smart Parking</h2>
+        <div class="header-controls">
+            <span id="user-greeting" style="font-weight: bold; color: #555;">Loading user...</span>
+            <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">System Online</span>
+            <button id="logout-btn" class="btn-logout">Log Out</button>
+        </div>
     </div>
 
     <h3>Live Parking Status</h3>
@@ -33,24 +58,26 @@
         <div id="slot2-ui" class="slot available">Slot 2<br><br>LOADING...</div>
     </div>
 
-    <h3>Latest Scan Log</h3>
-    <table style="margin-bottom: 30px;">
-        <tr>
-            <th>RFID UID</th>
-            <th>Action / Status</th>
-            <th>Time</th>
-        </tr>
-        <tr>
-            <td id="log-uid">Waiting...</td>
-            <td id="log-action">Waiting...</td>
-            <td id="log-time">Waiting...</td>
-        </tr>
-    </table>
+    <h3>Your Latest Scan</h3>
+    <div class="table-responsive">
+        <table>
+            <tr>
+                <th>RFID UID</th>
+                <th>Action / Status</th>
+                <th>Time</th>
+            </tr>
+            <tr>
+                <td id="log-uid">Waiting...</td>
+                <td id="log-action">Waiting...</td>
+                <td id="log-time">Waiting...</td>
+            </tr>
+        </table>
+    </div>
 
-    <h3>All Access Logs (History)</h3>
-    <div style="max-height: 400px; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <h3>Your Access History</h3>
+    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         <table id="logsTable">
-            <thead style="position: sticky; top: 0; z-index: 1;">
+            <thead>
                 <tr>
                     <th>RFID UID</th>
                     <th>Action / Status</th>
@@ -58,7 +85,7 @@
                 </tr>
             </thead>
             <tbody id="logsBody">
-                <tr><td colspan="3" style="text-align:center;">Loading logs from cloud...</td></tr>
+                <tr><td colspan="3" style="text-align:center;">Authenticating and loading data...</td></tr>
             </tbody>
         </table>
     </div>
@@ -73,79 +100,117 @@
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.database();
 
-        // 1. LIVE SLOT MONITORING
-        db.ref('slots').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const s1 = document.getElementById('slot1-ui');
-                s1.className = data.slot1 === 1 ? 'slot available' : 'slot occupied';
-                s1.innerHTML = data.slot1 === 1 ? 'Slot 1<br><br>AVAILABLE' : 'Slot 1<br><br>OCCUPIED';
+        let currentUserRfid = null;
 
-                const s2 = document.getElementById('slot2-ui');
-                s2.className = data.slot2 === 1 ? 'slot available' : 'slot occupied';
-                s2.innerHTML = data.slot2 === 1 ? 'Slot 2<br><br>AVAILABLE' : 'Slot 2<br><br>OCCUPIED';
+        // --- AUTHENTICATION CHECK ---
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is logged in! Let's get their specific RFID from the database
+                db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        currentUserRfid = userData.rfid_id;
+                        document.getElementById('user-greeting').innerText = "Hello, " + userData.fullName;
+                        
+                        // Now that we know who they are, load their data
+                        loadDashboardData();
+                    }
+                });
+            } else {
+                // Not logged in? Kick them back to the login page!
+                window.location.href = "login.html";
             }
         });
 
-        // 2. LIVE POPUP & LATEST SCAN MONITORING
-        let isFirstLoad = true;
-        db.ref('latest_scan').on('value', (snapshot) => {
-            const scan = snapshot.val();
+        // --- LOGOUT BUTTON ---
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = "login.html";
+            });
+        });
+
+        // --- LOAD DATA FUNCTION ---
+        function loadDashboardData() {
             
-            if (scan) {
-                document.getElementById('log-uid').innerText = scan.uid;
-                document.getElementById('log-action').innerText = scan.action;
-                document.getElementById('log-time').innerText = new Date().toLocaleTimeString();
+            // 1. LIVE SLOT MONITORING (Everyone sees the same parking slots)
+            db.ref('slots').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const s1 = document.getElementById('slot1-ui');
+                    s1.className = data.slot1 === 1 ? 'slot available' : 'slot occupied';
+                    s1.innerHTML = data.slot1 === 1 ? 'Slot 1<br><br>AVAILABLE' : 'Slot 1<br><br>OCCUPIED';
 
-                if (!isFirstLoad) {
-                    let iconType = "info";
-                    if(scan.action.includes("Granted")) iconType = "success";
-                    if(scan.action.includes("Denied") || scan.action.includes("Unregistered")) iconType = "error";
-                    if(scan.action.includes("Full")) iconType = "warning";
+                    const s2 = document.getElementById('slot2-ui');
+                    s2.className = data.slot2 === 1 ? 'slot available' : 'slot occupied';
+                    s2.innerHTML = data.slot2 === 1 ? 'Slot 2<br><br>AVAILABLE' : 'Slot 2<br><br>OCCUPIED';
+                }
+            });
 
-                    Swal.fire({
-                        title: "Scan Detected!",
-                        text: scan.action + " (UID: " + scan.uid + ")",
-                        icon: iconType,
-                        timer: 4000
-                    });
+            // 2. LIVE POPUP & LATEST SCAN (Filtered by logged-in user's RFID)
+            let isFirstLoad = true;
+            db.ref('latest_scan').on('value', (snapshot) => {
+                const scan = snapshot.val();
+                
+                // ONLY update the top table and popup if the scan matches THIS user's card
+                if (scan && scan.uid === currentUserRfid) {
+                    document.getElementById('log-uid').innerText = scan.uid;
+                    document.getElementById('log-action').innerText = scan.action;
+                    document.getElementById('log-time').innerText = new Date().toLocaleTimeString();
+
+                    if (!isFirstLoad) {
+                        let iconType = "info";
+                        if(scan.action.includes("Granted")) iconType = "success";
+                        if(scan.action.includes("Denied") || scan.action.includes("Unregistered")) iconType = "error";
+                        if(scan.action.includes("Full")) iconType = "warning";
+
+                        Swal.fire({
+                            title: "Your Card Scanned!",
+                            text: scan.action + " (UID: " + scan.uid + ")",
+                            icon: iconType,
+                            timer: 4000
+                        });
+                    }
                 }
                 isFirstLoad = false;
-            }
-        });
-
-        // 3. FETCH AND DISPLAY ALL HISTORICAL LOGS
-        db.ref('logs').on('value', (snapshot) => {
-            const tbody = document.getElementById('logsBody');
-            tbody.innerHTML = ''; 
-
-            let logsArray = [];
-
-            snapshot.forEach((childSnapshot) => {
-                logsArray.push(childSnapshot.val());
             });
 
-            // Put the newest scans at the top
-            logsArray.reverse();
+            // 3. FETCH AND DISPLAY ALL HISTORICAL LOGS (Filtered by logged-in user's RFID)
+            db.ref('logs').on('value', (snapshot) => {
+                const tbody = document.getElementById('logsBody');
+                tbody.innerHTML = ''; 
 
-            if (logsArray.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No history found.</td></tr>';
-                return;
-            }
+                let logsArray = [];
 
-            logsArray.forEach((log) => {
-                const row = `
-                    <tr>
-                        <td><strong>${log.uid}</strong></td>
-                        <td>${log.action}</td>
-                        <td>${log.time || 'N/A'}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
+                snapshot.forEach((childSnapshot) => {
+                    const log = childSnapshot.val();
+                    // ONLY push to the array if it matches the user
+                    if (log.uid === currentUserRfid) {
+                        logsArray.push(log);
+                    }
+                });
+
+                logsArray.reverse(); // Put the newest scans at the top
+
+                if (logsArray.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No history found for your card.</td></tr>';
+                    return;
+                }
+
+                logsArray.forEach((log) => {
+                    const row = `
+                        <tr>
+                            <td><strong>${log.uid}</strong></td>
+                            <td>${log.action}</td>
+                            <td>${log.time || 'N/A'}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
             });
-        });
+        }
     </script>
 </body>
 </html>
