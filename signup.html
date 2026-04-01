@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Smart Parking</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 350px; text-align: center; }
+        .auth-card h2 { margin: 0 0 20px 0; color: #333; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        input:focus { border-color: #28a745; outline: none; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background-color: #218838; }
+        .links { margin-top: 20px; font-size: 14px; }
+        .links a { color: #28a745; text-decoration: none; }
+        .links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-card">
+        <h2>Create Account</h2>
+        <form id="signup-form">
+            <input type="text" id="fullname" placeholder="Full Name" required>
+            <input type="email" id="email" placeholder="Email Address" required>
+            <input type="password" id="password" placeholder="Password (Min 6 chars)" required>
+            <input type="text" id="rfid" placeholder="RFID Card UID (e.g., 32B85055)" required>
+            <button type="submit">Sign Up</button>
+        </form>
+        <div class="links">
+            <p>Already have an account? <a href="login.html">Login</a></p>
+            <p><a href="index.html">← Back to Home</a></p>
+        </div>
+    </div>
+
+    <script>
+        // 🚨 YOUR FIREBASE CONFIG 🚨
+        const firebaseConfig = {
+            apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
+            databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "smart-parking-capstone-ee166",
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // Handle the Form Submission
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // Stop the page from refreshing
+
+            const name = document.getElementById('fullname').value;
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const rfid = document.getElementById('rfid').value;
+
+            // 1. Create the user securely in Firebase Auth
+            auth.createUserWithEmailAndPassword(email, pass)
+            .then((userCredential) => {
+                const userId = userCredential.user.uid;
+
+                // 2. Save their specific details (including RFID) to the "users" table
+                return db.ref('users/' + userId).set({
+                    fullName: name,
+                    email: email,
+                    rfid_id: rfid.toUpperCase() // Force uppercase just like the ESP does!
+                });
+            })
+            .then(() => {
+                Swal.fire("Success!", "Account created. You can now login.", "success")
+                .then(() => {
+                    window.location.href = "dashboard.html"; // Send them to the dashboard!
+                });
+            })
+            .catch((error) => {
+                Swal.fire("Error", error.message, "error");
+            });
+        });
+    </script>
+</body>
+</html>
