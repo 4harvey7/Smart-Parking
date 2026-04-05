@@ -131,10 +131,13 @@
 
         function loadDashboardData() {
             
-            // --- 🚨 LIVE HARDWARE STATUS CHECKER ---
+            // --- 🚨 LIVE HARDWARE STATUS CHECKER (FIXED!) ---
             db.ref('hardware_status/online').on('value', (snapshot) => {
                 const badge = document.getElementById('system-status-badge');
-                if (snapshot.val() === true) {
+                let isOnline = snapshot.val();
+                
+                // Bulletproof check: Accepts boolean true, string "true", or number 1
+                if (isOnline === true || isOnline === "true" || isOnline === 1) {
                     badge.style.background = '#28a745';
                     badge.innerText = 'System Online 🟢';
                 } else {
