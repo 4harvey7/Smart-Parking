@@ -149,29 +149,51 @@
                 }
             });
 
-            // 2. LIVE POPUP & LATEST SCAN (Filtered by logged-in user's RFID)
+            // 2. LIVE POPUP NOTIFICATIONS (The "You can enter" feature)
             let isFirstLoad = true;
+
             db.ref('latest_scan').on('value', (snapshot) => {
                 const scan = snapshot.val();
                 
-                // ONLY update the top table and popup if the scan matches THIS user's card
+                // ONLY trigger if the scan matches the currently logged-in user
                 if (scan && scan.uid === currentUserRfid) {
+                    
+                    // Update the HTML text on the dashboard
                     document.getElementById('log-uid').innerText = scan.uid;
                     document.getElementById('log-action').innerText = scan.action;
                     document.getElementById('log-time').innerText = new Date().toLocaleTimeString();
 
+                    // Show the massive popup notification (but skip it when the page first loads)
                     if (!isFirstLoad) {
-                        let iconType = "info";
-                        if(scan.action.includes("Granted")) iconType = "success";
-                        if(scan.action.includes("Denied") || scan.action.includes("Unregistered")) iconType = "error";
-                        if(scan.action.includes("Full")) iconType = "warning";
-
-                        Swal.fire({
-                            title: "Your Card Scanned!",
-                            text: scan.action + " (UID: " + scan.uid + ")",
-                            icon: iconType,
-                            timer: 4000
-                        });
+                        
+                        // IF GRANTED (Slots are available)
+                        if (scan.action.includes("Granted")) {
+                            Swal.fire({
+                                title: "Gate Opening! 🟢",
+                                text: "A slot is available. You may now enter the parking area.",
+                                icon: "success",
+                                timer: 5000, // Closes automatically after 5 seconds
+                                showConfirmButton: false
+                            });
+                        } 
+                        // IF DENIED (Parking is completely full)
+                        else if (scan.action.includes("Full")) {
+                            Swal.fire({
+                                title: "Parking Full 🟡",
+                                text: "Sorry, there are no available slots right now. Please wait.",
+                                icon: "warning",
+                                confirmButtonText: "Okay"
+                            });
+                        } 
+                        // IF DENIED (Card not registered)
+                        else {
+                            Swal.fire({
+                                title: "Access Denied 🔴",
+                                text: "Your card is not registered in the system.",
+                                icon: "error",
+                                confirmButtonText: "Close"
+                            });
+                        }
                     }
                 }
                 isFirstLoad = false;
