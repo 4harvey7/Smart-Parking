@@ -55,21 +55,31 @@
         document.getElementById('signup-form').addEventListener('submit', function(e) {
             e.preventDefault(); // Stop the page from refreshing
 
-            const name = document.getElementById('fullname').value;
-            const email = document.getElementById('email').value;
+            // 🧹 CLEANUP PHASE: Remove spaces and format inputs before saving
+            // .trim() removes spaces at the very beginning and very end
+            const name = document.getElementById('fullname').value.trim();
             const pass = document.getElementById('password').value;
-            const rfid = document.getElementById('rfid').value;
+            
+            // .replace(/\s+/g, '') destroys ALL spaces, even accidentally typed ones in the middle
+            const email = document.getElementById('email').value.replace(/\s+/g, '').toLowerCase();
+            const rfid = document.getElementById('rfid').value.replace(/\s+/g, '').toUpperCase();
+
+            // Check if RFID is empty after removing spaces
+            if (rfid === "") {
+                Swal.fire("Error", "Please enter a valid RFID code.", "error");
+                return;
+            }
 
             // 1. Create the user securely in Firebase Auth
             auth.createUserWithEmailAndPassword(email, pass)
             .then((userCredential) => {
                 const userId = userCredential.user.uid;
 
-                // 2. Save their specific details (including RFID) to the "users" table
+                // 2. Save their specific details (including cleaned RFID) to the "users" table
                 return db.ref('users/' + userId).set({
                     fullName: name,
                     email: email,
-                    rfid_id: rfid.toUpperCase() // Force uppercase just like the ESP does!
+                    rfid_id: rfid // Now guaranteed to be perfect, uppercase, and space-free!
                 });
             })
             .then(() => {
