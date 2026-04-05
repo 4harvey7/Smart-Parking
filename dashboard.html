@@ -10,7 +10,14 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; background-color: #f8f9fa; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+        
+        /* SECURITY SCREEN: Covers the whole page until verified */
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: white; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column;}
+        
+        /* Hide the main dashboard initially */
+        #main-content { display: none; padding: 30px; }
+
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;}
         .header-controls { display: flex; align-items: center; gap: 15px; }
         .btn-logout { background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s;}
@@ -23,8 +30,9 @@
         table { width: 100%; border-collapse: collapse; background: white; min-width: 500px; }
         th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #007bff; color: white; position: sticky; top: 0; z-index: 1;}
+        
         @media (max-width: 600px) {
-            body { margin: 15px; }
+            #main-content { padding: 15px; }
             .header { flex-direction: column; text-align: center; gap: 15px; }
             .header-controls { flex-direction: column; width: 100%; }
             .btn-logout { width: 100%; }
@@ -35,51 +43,42 @@
 </head>
 <body>
 
-    <div class="header">
-        <h2>🚗 My Parking Dashboard</h2>
-        <div class="header-controls">
-            <span id="user-greeting" style="font-weight: bold; color: #555;">Authenticating...</span>
-            <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">System Online</span>
-            <button id="logout-btn" class="btn-logout">Log Out</button>
+    <div id="loading-screen">
+        <h2>🔒 Checking Access...</h2>
+        <p style="color: #666;">Please wait while we verify your credentials.</p>
+    </div>
+
+    <div id="main-content">
+        <div class="header">
+            <h2>🚗 My Parking Dashboard</h2>
+            <div class="header-controls">
+                <span id="user-greeting" style="font-weight: bold; color: #555;">Authenticating...</span>
+                <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">System Online</span>
+                <button id="logout-btn" class="btn-logout">Log Out</button>
+            </div>
         </div>
-    </div>
 
-    <h3>Live Parking Status</h3>
-    <div class="status-container">
-        <div id="slot1-ui" class="slot available">Slot 1<br><br>LOADING...</div>
-        <div id="slot2-ui" class="slot available">Slot 2<br><br>LOADING...</div>
-    </div>
+        <h3>Live Parking Status</h3>
+        <div class="status-container">
+            <div id="slot1-ui" class="slot available">Slot 1<br><br>LOADING...</div>
+            <div id="slot2-ui" class="slot available">Slot 2<br><br>LOADING...</div>
+        </div>
 
-    <h3>My Latest Scan</h3>
-    <div class="table-responsive">
-        <table>
-            <tr>
-                <th>RFID UID</th>
-                <th>Action / Status</th>
-                <th>Time</th>
-            </tr>
-            <tr>
-                <td id="log-uid">Waiting for your card...</td>
-                <td id="log-action">--</td>
-                <td id="log-time">--</td>
-            </tr>
-        </table>
-    </div>
-
-    <h3>My Access History</h3>
-    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table id="logsTable">
-            <thead>
-                <tr>
-                    <th>RFID UID</th>
-                    <th>Action / Status</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody id="logsBody">
-                <tr><td colspan="3" style="text-align:center;">Loading your history...</td></tr>
-            </tbody>
-        </table>
+        <h3>My Access History</h3>
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table id="logsTable">
+                <thead>
+                    <tr>
+                        <th>RFID UID</th>
+                        <th>Action / Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="3" style="text-align:center;">Loading your history...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -96,41 +95,57 @@
 
         let currentUserRfid = null;
 
-        // --- AUTHENTICATION & RFID FETCH ---
+        // --- STRICT AUTHENTICATION & RFID FETCH ---
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // 1. Find the user's specific RFID in the database
+                // User is authenticated, now fetch their database profile
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
                         const userData = snapshot.val();
-                        currentUserRfid = userData.rfid_id; // GET THE RFID!
+                        currentUserRfid = userData.rfid_id; 
+                        const userName = userData.fullName || "User";
                         
-                        document.getElementById('user-greeting').innerText = "Hello, " + (userData.fullName || "User");
+                        document.getElementById('user-greeting').innerText = "Hello, " + userName;
+                        
+                        // 1. REMOVE SECURITY SCREEN AND SHOW DASHBOARD
+                        document.getElementById('loading-screen').style.display = 'none';
+                        document.getElementById('main-content').style.display = 'block';
+
+                        // 2. SHOW FLOATING WELCOME MESSAGE
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: `Welcome back, ${userName}!`,
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
                         
                         if (!currentUserRfid) {
-                            Swal.fire("Warning", "Your account does not have an RFID card linked to it. Please contact the admin.", "warning");
+                            Swal.fire("Warning", "Your account does not have an RFID card linked to it.", "warning");
                         } else {
-                            // 2. Only load data once we know their RFID
                             loadDashboardData();
                         }
                     } else {
-                        document.getElementById('user-greeting').innerText = "Account Error: No Database Profile";
+                        // User logged in, but no database entry found
+                        document.getElementById('loading-screen').innerHTML = "<h2>❌ Account Error</h2><p>No database profile found. Please contact admin.</p><button onclick='auth.signOut()'>Go Back</button>";
                     }
                 });
             } else {
-                window.location.href = "login.html";
+                // 🚨 INTRUDER DETECTED: Instantly kick them to login page
+                window.location.replace("login.html");
             }
         });
 
         // --- LOGOUT BUTTON ---
         document.getElementById('logout-btn').addEventListener('click', () => {
-            auth.signOut().then(() => { window.location.href = "login.html"; });
+            auth.signOut().then(() => { window.location.replace("login.html"); });
         });
 
         // --- LOAD SECURE DATA ---
         function loadDashboardData() {
             
-            // 1. LIVE SLOTS (Everyone sees the same parking slots)
             db.ref('slots').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -144,17 +159,12 @@
                 }
             });
 
-            // 2. LIVE POPUP & LATEST SCAN (STRICTLY FILTERED)
+            // This background listener stays active ONLY for the popup notifications
             let isFirstLoad = true;
             db.ref('latest_scan').on('value', (snapshot) => {
                 const scan = snapshot.val();
                 
-                // 🚨 ONLY trigger if the scanned UID matches the logged-in user's UID!
                 if (scan && scan.uid === currentUserRfid) {
-                    document.getElementById('log-uid').innerText = scan.uid;
-                    document.getElementById('log-action').innerText = scan.action;
-                    document.getElementById('log-time').innerText = scan.time ? scan.time : new Date().toLocaleTimeString();
-
                     if (!isFirstLoad) {
                         if (scan.action.includes("Granted")) {
                             Swal.fire({
@@ -178,22 +188,20 @@
                 isFirstLoad = false;
             });
 
-            // 3. ALL ACCESS LOGS (STRICTLY FILTERED)
+            // Loads the main history table
             db.ref('logs').on('value', (snapshot) => {
                 const tbody = document.getElementById('logsBody');
                 tbody.innerHTML = ''; 
-
                 let logsArray = [];
 
                 snapshot.forEach((childSnapshot) => {
                     const log = childSnapshot.val();
-                    // 🚨 ONLY push to array if the log belongs to this user!
                     if (log.uid === currentUserRfid) {
                         logsArray.push(log);
                     }
                 });
 
-                logsArray.reverse(); // Newest first
+                logsArray.reverse(); 
 
                 if (logsArray.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No history found for your card.</td></tr>';
