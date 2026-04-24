@@ -138,6 +138,16 @@
     </div>
 
     <script>
+        function isStrongPassword(password) {
+            // At least:
+            // 1 uppercase letter
+            // 1 lowercase letter
+            // 1 number
+            // 1 special character
+            // 6+ characters
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_\-#])[A-Za-z\d@$!%*?&_\-#]{6,}$/;
+            return regex.test(password);
+        }
         const firebaseConfig = {
             apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
             databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -155,6 +165,14 @@
             const email = document.getElementById('email').value.replace(/\s+/g, '').toLowerCase();
             const pass = document.getElementById('password').value;
             const confirmPass = document.getElementById('confirm-password').value;
+            if (!isStrongPassword(pass)) {
+                Swal.fire(
+                    "Weak Password",
+                    "Password must contain uppercase, lowercase, number, and special character.",
+                    "warning"
+                );
+                return;
+            }
             const rfid = document.getElementById('rfid').value.replace(/\s+/g, '').toUpperCase();
 
             if (pass !== confirmPass) {

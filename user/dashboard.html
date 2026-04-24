@@ -29,8 +29,12 @@
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
-
             background: url('../assets/img/floor-with-sky.jpg') center/cover fixed;
+            
+            /* ADD THESE LINES */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensures body is at least the height of the screen */
         }
 
         p {
@@ -65,7 +69,13 @@
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
         /* --- MAIN CONTENT --- */
-        #main-content { display: none; padding: 20px 5%; max-width: 1200px; margin: auto; }
+       #main-content {
+            flex: 1; /* This pushes the footer down */
+            padding: 20px 5%;
+            max-width: 1200px;
+            margin: auto;
+            width: 90%; /* Ensure it spans the width */
+        }
 
         .welcome-section { margin: 30px 0; }
         .welcome-section h1 { font-size: 2rem; font-weight: 800; margin: 0; color: var(--primary); }
@@ -132,7 +142,8 @@
             color: #a0aec0;
             font-size: 0.85rem;
             margin-top: 40px;
-            position: static;
+            /* position: sticky;
+            bottom: 0;*/
         }
             .user-profile span {
         color: #111; /* or white depending on your navbar */
