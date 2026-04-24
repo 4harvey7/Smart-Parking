@@ -95,22 +95,39 @@
             document.getElementById('hw-status').innerText = snap.val() ? "🟢 ONLINE" : "🔴 OFFLINE";
         });
 
-        // 2. Monitor Parking Slots
-        db.ref('slots').on('value', snap => {
+       // 2. Monitor Parking Slots (UPDATED - FIXED 4 SLOTS)
+        const slotIds = ['slot1', 'slot2', 'slot3', 'slot4'];
+
+        function renderSlots() {
             const container = document.getElementById('parking-slots');
             container.innerHTML = '';
-            snap.forEach(slotSnap => {
-                const isOccupied = slotSnap.val() === 1;
-                const slotDiv = document.createElement('div');
-                slotDiv.className = `slot-card ${isOccupied ? 'slot-occupied' : 'slot-available'}`;
-                slotDiv.innerHTML = `
-                    <div style="font-size: 0.8rem; font-weight: bold;">SLOT</div>
-                    <div style="font-size: 1.5rem; font-weight: 800;">${slotSnap.key.toUpperCase()}</div>
-                    <div style="font-size: 0.7rem; margin-top: 5px;">${isOccupied ? 'OCCUPIED' : 'AVAILABLE'}</div>
-                `;
-                container.appendChild(slotDiv);
+
+            slotIds.forEach(slotId => {
+                db.ref('slots/' + slotId).on('value', snap => {
+                    const isOccupied = snap.val() === 1;
+
+                    // find or create slot card
+                    let slotDiv = document.getElementById(slotId);
+
+                    if (!slotDiv) {
+                        slotDiv = document.createElement('div');
+                        slotDiv.id = slotId;
+                        container.appendChild(slotDiv);
+                    }
+
+                    slotDiv.className = `slot-card ${isOccupied ? 'slot-occupied' : 'slot-available'}`;
+                    slotDiv.innerHTML = `
+                        <div style="font-size: 0.8rem; font-weight: bold;">SLOT</div>
+                        <div style="font-size: 1.5rem; font-weight: 800;">${slotId.toUpperCase()}</div>
+                        <div style="font-size: 0.7rem; margin-top: 5px;">
+                            ${isOccupied ? 'OCCUPIED' : 'AVAILABLE'}
+                        </div>
+                    `;
+                });
             });
-        });
+        }
+
+        renderSlots();
 
         // 3. Monitor Latest Scan
         db.ref('latest_scan').on('value', snap => {
