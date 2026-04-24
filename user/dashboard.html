@@ -194,12 +194,12 @@
                     }
                 });
             } else {
-                window.location.replace("C:\\Projects\\Smart Parking\\login.html");
+                window.location.replace("../login.html");
             }
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => {
-            auth.signOut().then(() => { window.location.replace("C:\\Projects\\Smart Parking\\login.html"); });
+            auth.signOut().then(() => { window.location.replace("../login.html"); });
         });
 
         function loadDashboardData() {
