@@ -11,13 +11,8 @@
 
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
-        
-        /* SECURITY SCREEN: Covers the whole page until verified */
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: white; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column;}
-        
-        /* Hide the main dashboard initially */
         #main-content { display: none; padding: 30px; }
-
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;}
         .header-controls { display: flex; align-items: center; gap: 15px; }
         .btn-logout { background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s;}
@@ -30,7 +25,6 @@
         table { width: 100%; border-collapse: collapse; background: white; min-width: 500px; }
         th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #007bff; color: white; position: sticky; top: 0; z-index: 1;}
-        
         @media (max-width: 600px) {
             #main-content { padding: 15px; }
             .header { flex-direction: column; text-align: center; gap: 15px; }
@@ -53,7 +47,7 @@
             <h2>🚗 My Parking Dashboard</h2>
             <div class="header-controls">
                 <span id="user-greeting" style="font-weight: bold; color: #555;">Authenticating...</span>
-                <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">System Online</span>
+                <span id="system-status-badge" style="background: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px;">Checking Status...</span>
                 <button id="logout-btn" class="btn-logout">Log Out</button>
             </div>
         </div>
@@ -82,7 +76,6 @@
     </div>
 
     <script>
-        // 🚨 YOUR FIREBASE CONFIG 🚨
         const firebaseConfig = {
             apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
             databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -95,10 +88,8 @@
 
         let currentUserRfid = null;
 
-        // --- STRICT AUTHENTICATION & RFID FETCH ---
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // User is authenticated, now fetch their database profile
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
                         const userData = snapshot.val();
@@ -107,11 +98,9 @@
                         
                         document.getElementById('user-greeting').innerText = "Hello, " + userName;
                         
-                        // 1. REMOVE SECURITY SCREEN AND SHOW DASHBOARD
                         document.getElementById('loading-screen').style.display = 'none';
                         document.getElementById('main-content').style.display = 'block';
 
-                        // 2. SHOW FLOATING WELCOME MESSAGE
                         Swal.fire({
                             toast: true,
                             position: 'top-end',
@@ -128,24 +117,32 @@
                             loadDashboardData();
                         }
                     } else {
-                        // User logged in, but no database entry found
                         document.getElementById('loading-screen').innerHTML = "<h2>❌ Account Error</h2><p>No database profile found. Please contact admin.</p><button onclick='auth.signOut()'>Go Back</button>";
                     }
                 });
             } else {
-                // 🚨 INTRUDER DETECTED: Instantly kick them to login page
                 window.location.replace("login.html");
             }
         });
 
-        // --- LOGOUT BUTTON ---
         document.getElementById('logout-btn').addEventListener('click', () => {
             auth.signOut().then(() => { window.location.replace("login.html"); });
         });
 
-        // --- LOAD SECURE DATA ---
         function loadDashboardData() {
             
+            // --- 🚨 LIVE HARDWARE STATUS CHECKER ---
+            db.ref('hardware_status/online').on('value', (snapshot) => {
+                const badge = document.getElementById('system-status-badge');
+                if (snapshot.val() === true) {
+                    badge.style.background = '#28a745';
+                    badge.innerText = 'System Online 🟢';
+                } else {
+                    badge.style.background = '#dc3545';
+                    badge.innerText = 'System Offline 🔴';
+                }
+            });
+
             db.ref('slots').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -159,7 +156,6 @@
                 }
             });
 
-            // This background listener stays active ONLY for the popup notifications
             let isFirstLoad = true;
             db.ref('latest_scan').on('value', (snapshot) => {
                 const scan = snapshot.val();
@@ -188,7 +184,6 @@
                 isFirstLoad = false;
             });
 
-            // Loads the main history table
             db.ref('logs').on('value', (snapshot) => {
                 const tbody = document.getElementById('logsBody');
                 tbody.innerHTML = ''; 
