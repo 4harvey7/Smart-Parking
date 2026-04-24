@@ -3,78 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Parking System</title>
+    <title>Smart Parking System | CTU-Argao</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        :root {
+            --primary-azure: #0077B6;
+            --sky-blue: #90E0EF;
+            --foundation-white: #F8F9FA;
+            --text-dark: #343A40;
+        }
+
+        body, html {
+            height: 100%;
             margin: 0;
-            padding: 0;
-            background-color: #f4f7f6;
-            color: #333;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-image: url('./assets/img/floor-with-sky.jpg'), 
+                              linear-gradient(rgba(248, 249, 250, 0.45), rgba(248, 249, 250, 0.45));
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            color: var(--text-dark);
         }
+
         .navbar {
-            background-color: #007bff;
-            padding: 20px 50px;
-            color: white;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 1rem 10%;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-        .navbar h1 { margin: 0; font-size: 24px; }
+
+        .navbar h1 { 
+            margin: 0; 
+            font-size: 1.4rem; 
+            color: var(--primary-azure);
+            font-weight: 500;
+        }
+
+        .navbar b { font-weight: 800; }
+
         .hero {
             flex: 1;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
+            padding: 20px;
+        }
+
+        .hero-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3rem;
+            border-radius: 28px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 650px;
             text-align: center;
-            padding: 50px;
+            backdrop-filter: blur(8px);
         }
-        .hero h2 { font-size: 48px; margin-bottom: 10px; color: #222; }
-        .hero p { font-size: 20px; color: #666; margin-bottom: 40px; max-width: 600px; }
-        .btn-container { display: flex; gap: 20px; }
+
+        .hero h2 { 
+            font-size: clamp(2rem, 5vw, 3rem); 
+            margin: 0 0 1rem 0;
+            line-height: 1.1;
+            color: var(--text-dark);
+        }
+
+        .hero p { 
+            font-size: 1.1rem; 
+            color: #4a5568; 
+            margin-bottom: 2.5rem; 
+            line-height: 1.6;
+        }
+
+        .btn-container { 
+            display: flex; 
+            gap: 1rem; 
+            justify-content: center; 
+        }
+
         .btn {
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
             text-decoration: none;
-            border-radius: 8px;
-            transition: 0.3s;
+            border-radius: 12px;
+            transition: 0.2s ease-in-out;
         }
-        .btn-primary { background-color: #007bff; color: white; border: 2px solid #007bff; }
-        .btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
-        .btn-outline { background-color: transparent; color: #007bff; border: 2px solid #007bff; }
-        .btn-outline:hover { background-color: #007bff; color: white; }
+
+        .btn-primary { 
+            background-color: var(--primary-azure); 
+            color: white; 
+        }
+
+        .btn-primary:hover { 
+            background-color: #023E8A; 
+            transform: translateY(-2px);
+        }
+
+        .btn-outline { 
+            background-color: transparent; 
+            color: var(--primary-azure); 
+            border: 2px solid var(--primary-azure); 
+        }
+
+        .btn-outline:hover { 
+            background-color: var(--primary-azure); 
+            color: white;
+            transform: translateY(-2px);
+        }
+
         .footer {
             text-align: center;
-            padding: 20px;
-            background-color: #e9ecef;
-            color: #777;
-            font-size: 14px;
+            padding: 1.5rem;
+            background: #1a202c;
+            color: #a0aec0;
+            font-size: 0.85rem;
+        }
+
+        .footer b { color: #edf2f7; }
+
+        @media (max-width: 600px) {
+            .btn-container { flex-direction: column; }
+            .hero-card { padding: 2rem 1.5rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="navbar">
-        <h1>🚗 Smart Parking</h1>
-    </div>
+    <nav class="navbar">
+        <h1>🚗 Smart<b>Parking</b></h1>
+    </nav>
 
-    <div class="hero">
-        <h2>Find Your Spot. Instantly.</h2>
-        <p>A real-time IoT parking management system designed to save time, reduce emissions, and optimize space utilization.</p>
-        <div class="btn-container">
-            <a href="login.html" class="btn btn-primary">Login to Dashboard</a>
-            <a href="signup.html" class="btn btn-outline">Create Account</a>
+    <main class="hero">
+        <div class="hero-card">
+            <h2>Find Your Spot. Instantly.</h2>
+            <p>Real-time IoT parking management utilizing ESP8266 and Ultrasonic sensors to optimize campus space utilization at CTU-Argao.</p>
+            <div class="btn-container">
+                <a href="login.html" class="btn btn-primary">Dashboard Login</a>
+                <a href="signup.html" class="btn btn-outline">Create Account</a>
+            </div>
         </div>
-    </div>
+    </main>
 
-    <div class="footer">
-        &copy; 2026 Developed by Rodz Harvey D. Licayan
-    </div>
+    <footer class="footer">
+        &copy; 2026 Developed by <b>Rodz Harvey D. Licayan</b> | BSIT CTU-Argao
+    </footer>
 
 </body>
 </html>

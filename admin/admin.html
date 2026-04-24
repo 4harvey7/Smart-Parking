@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Smart Parking Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #0077B6; --danger: #F5365C; --success: #2DCE89; --warning: #fb6340; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: #f4f7f6; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 260px; background: #1a1a1a; color: white; padding: 30px 20px; position: fixed; height: 100%; display: flex; flex-direction: column; }
+        .main { margin-left: 300px; padding: 40px; width: calc(100% - 340px); }
+        
+        .parking-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 20px; }
+        .slot-card { padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #eee; transition: 0.3s; }
+        .slot-occupied { background: #feecef; border-color: var(--danger); color: var(--danger); }
+        .slot-available { background: #e7faf3; border-color: var(--success); color: var(--success); }
+
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px; color: #888; border-bottom: 2px solid #eee; }
+        td { padding: 15px; border-bottom: 1px solid #f9f9f9; }
+
+        .badge { padding: 5px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .badge-active { background: #e7faf3; color: var(--success); }
+        .badge-banned { background: #feecef; color: var(--danger); }
+        
+        .btn { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 0.8rem; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+        .btn-logout { background: transparent; color: #888; border: 1px solid #333; width: 100%; margin-top: auto; margin-bottom: 40px; }
+        .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+        
+        .btn-ban { background: #fff5f2; color: var(--warning); border: 1px solid var(--warning); }
+        .btn-unban { background: #e7faf3; color: var(--success); border: 1px solid var(--success); }
+        .btn-delete { background: var(--danger); color: white; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2 style="color: var(--primary)">Admin Panel</h2>
+        <p>Hardware: <span id="hw-status">Checking...</span></p>
+        <hr style="opacity: 0.1; margin: 20px 0;">
+        
+        <button class="btn btn-primary" onclick="viewAllActivity()">📋 View All Activity</button>
+        
+        <button class="btn btn-logout" onclick="logout()">🚪 Logout</button>
+    </div>
+
+    <div class="main">
+        <div class="card">
+            <h3>Live Parking Status</h3>
+            <div class="parking-grid" id="parking-slots"></div>
+        </div>
+
+        <div class="card">
+            <h3>Recent Scan Activity</h3>
+            <div id="live-scan" style="background: #eef2ff; padding: 15px; border-radius: 12px; font-family: monospace;">
+                Listening for RFID events...
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>User Management</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User Name</th>
+                        <th>RFID ID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
+            databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "smart-parking-capstone-ee166",
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 1. Monitor Hardware Status
+        db.ref('hardware_status/online').on('value', snap => {
+            document.getElementById('hw-status').innerText = snap.val() ? "🟢 ONLINE" : "🔴 OFFLINE";
+        });
+
+        // 2. Monitor Parking Slots
+        db.ref('slots').on('value', snap => {
+            const container = document.getElementById('parking-slots');
+            container.innerHTML = '';
+            snap.forEach(slotSnap => {
+                const isOccupied = slotSnap.val() === 1;
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `slot-card ${isOccupied ? 'slot-occupied' : 'slot-available'}`;
+                slotDiv.innerHTML = `
+                    <div style="font-size: 0.8rem; font-weight: bold;">SLOT</div>
+                    <div style="font-size: 1.5rem; font-weight: 800;">${slotSnap.key.toUpperCase()}</div>
+                    <div style="font-size: 0.7rem; margin-top: 5px;">${isOccupied ? 'OCCUPIED' : 'AVAILABLE'}</div>
+                `;
+                container.appendChild(slotDiv);
+            });
+        });
+
+        // 3. Monitor Latest Scan
+        db.ref('latest_scan').on('value', snap => {
+            const scan = snap.val();
+            if(scan) {
+                document.getElementById('live-scan').innerHTML = 
+                `<strong>[${scan.time}]</strong> Tag: ${scan.uid} - <span style="color:var(--primary)">${scan.action}</span>`;
+            }
+        });
+
+        // 4. User Management
+        db.ref('users').on('value', snapshot => {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+            snapshot.forEach(child => {
+                const user = child.val();
+                if (user.role === 'admin') return;
+
+                const uid = child.key;
+                const isBanned = user.isBanned || false;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${user.fullName}</strong><br><small>${user.email}</small></td>
+                        <td><code>${user.rfid_id}</code></td>
+                        <td><span class="badge ${isBanned ? 'badge-banned' : 'badge-active'}">${isBanned ? 'BANNED' : 'ACTIVE'}</span></td>
+                        <td>
+                            <button class="btn ${isBanned ? 'btn-unban' : 'btn-ban'}" onclick="toggleBan('${uid}', ${isBanned})">
+                                ${isBanned ? 'Restore' : 'Ban'}
+                            </button>
+                            <button class="btn btn-delete" onclick="deleteUser('${uid}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        // 5. Functions
+        function logout() {
+            Swal.fire({
+                title: 'Logout?',
+                text: "You will be redirected to the login page.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0077B6',
+                confirmButtonText: 'Yes, Logout'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Redirect to your login page
+                    window.location.href = "../login.html"; 
+                }
+            });
+        }
+
+        function viewAllActivity() {
+            db.ref('logs').limitToLast(10).once('value', snap => {
+                let logHtml = '<div style="text-align:left; font-family:monospace; max-height:300px; overflow-y:auto;">';
+                if (snap.exists()) {
+                    snap.forEach(log => {
+                        const l = log.val();
+                        logHtml += `<p style="border-bottom:1px solid #eee; padding:10px; margin:0;">[${l.timestamp || 'N/A'}] ${l.message || 'No data'}</p>`;
+                    });
+                } else {
+                    logHtml += '<p>No logs found.</p>';
+                }
+                logHtml += '</div>';
+
+                Swal.fire({
+                    title: 'System Activity Logs',
+                    html: logHtml,
+                    width: '600px',
+                    confirmButtonColor: '#0077B6'
+                });
+            });
+        }
+
+        function toggleBan(uid, status) {
+            db.ref('users/' + uid).update({ isBanned: !status })
+                .then(() => Swal.fire('Success', 'User status updated.', 'success'));
+        }
+
+        function deleteUser(uid) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This action cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#F5365C',
+                confirmButtonText: 'Delete'
+            }).then((result) => {
+                if (result.isConfirmed) db.ref('users/' + uid).remove();
+            });
+        }
+    </script>
+</body>
+</html>

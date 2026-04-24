@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Parking</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0077B6;
+            --success: #2DCE89;
+            --danger: #F5365C;
+            --bg: #F8F9FA;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            /* Changed to forward slashes and relative path */
+            background: linear-gradient(rgba(248, 249, 250, 0.8), rgba(248, 249, 250, 0.8)), 
+                        url('./assets/img/floor-with-sky.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #333;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loading-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            background: white; display: flex; justify-content: center; 
+            align-items: center; z-index: 9999; flex-direction: column;
+        }
+
+        /* --- NAV BAR --- */
+        nav {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        /* --- MAIN CONTENT --- */
+        #main-content { display: none; padding: 20px 5%; max-width: 1200px; margin: auto; }
+
+        .welcome-section { margin: 30px 0; }
+        .welcome-section h1 { font-size: 2rem; font-weight: 800; margin: 0; color: var(--primary); }
+
+        /* --- PARKING GRID --- */
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .slot-card {
+            background: white;
+            border-radius: 24px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .slot-card:hover { transform: translateY(-5px); }
+
+        .slot-icon { font-size: 50px; margin-bottom: 15px; display: block; }
+
+        .slot-name { font-size: 1.2rem; font-weight: 600; color: #666; }
+        .slot-status { font-size: 1.5rem; font-weight: 800; margin-top: 5px; }
+
+        /* Status Colors */
+        .available { border-color: var(--success); color: var(--success); }
+        .occupied { border-color: var(--danger); color: var(--danger); }
+
+        /* --- HISTORY TABLE --- */
+        .history-card {
+            background: white;
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .history-card h3 { margin-top: 0; margin-bottom: 20px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px; color: #888; font-size: 0.9rem; border-bottom: 1px solid #eee; }
+        td { padding: 15px; border-bottom: 1px solid #f9f9f9; font-size: 0.95rem; }
+
+        /* --- BUTTONS --- */
+        .btn-logout { 
+            background: #f1f3f5; color: #555; border: none; padding: 10px 20px; 
+            border-radius: 12px; cursor: pointer; font-weight: 600; transition: 0.3s;
+        }
+        .btn-logout:hover { background: #ffe3e3; color: var(--danger); }
+
+        @media (max-width: 600px) {
+            .welcome-section h1 { font-size: 1.5rem; }
+            .parking-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <h2 style="color: var(--primary)">🚗 Smart Parking</h2>
+        <p>Finding your spot...</p>
+    </div>
+
+    <nav>
+        <div class="user-profile">
+            <div id="status-indicator" class="status-dot" style="background: #ccc;"></div>
+            <span id="user-greeting" style="font-weight: 600;">Loading...</span>
+        </div>
+        <button id="logout-btn" class="btn-logout">Sign Out</button>
+    </nav>
+
+    <div id="main-content">
+        <div class="welcome-section">
+            <h1>Parking Overview</h1>
+            <p id="system-text" style="color: #666;">Connecting to hardware...</p>
+        </div>
+
+        <div class="parking-grid">
+            <div id="slot1-ui" class="slot-card">
+                <span class="slot-icon">🚗</span>
+                <div class="slot-name">Parking Slot 1</div>
+                <div class="slot-status">Checking...</div>
+            </div>
+
+            <div id="slot2-ui" class="slot-card">
+                <span class="slot-icon">🚗</span>
+                <div class="slot-name">Parking Slot 2</div>
+                <div class="slot-status">Checking...</div>
+            </div>
+        </div>
+
+        <div class="history-card">
+            <h3>Recent Activity</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Activity</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody">
+                        <tr><td colspan="2" style="text-align:center;">Fetching history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
+            databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "smart-parking-capstone-ee166",
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUserRfid = null;
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        currentUserRfid = userData.rfid_id; 
+                        document.getElementById('user-greeting').innerText = userData.fullName || "User";
+                        document.getElementById('loading-screen').style.display = 'none';
+                        document.getElementById('main-content').style.display = 'block';
+                        loadDashboardData();
+                    }
+                });
+            } else {
+                window.location.replace("C:\\Projects\\Smart Parking\\login.html");
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            auth.signOut().then(() => { window.location.replace("C:\\Projects\\Smart Parking\\login.html"); });
+        });
+
+        function loadDashboardData() {
+            // Hardware Status
+            db.ref('hardware_status/online').on('value', (snapshot) => {
+                const dot = document.getElementById('status-indicator');
+                const text = document.getElementById('system-text');
+                if (snapshot.val() === true) {
+                    dot.style.background = 'var(--success)';
+                    text.innerText = 'System is live and ready.';
+                } else {
+                    dot.style.background = 'var(--danger)';
+                    text.innerText = 'System is currently offline.';
+                }
+            });
+
+            // Live Slots
+            db.ref('slots').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    updateSlot('slot1-ui', data.slot1);
+                    updateSlot('slot2-ui', data.slot2);
+                }
+            });
+
+            // Logs
+            db.ref('logs').on('value', (snapshot) => {
+                const tbody = document.getElementById('logsBody');
+                tbody.innerHTML = ''; 
+                let logs = [];
+                snapshot.forEach(child => {
+                    const val = child.val();
+                    if (val.uid === currentUserRfid) logs.push(val);
+                });
+                logs.reverse().slice(0, 5).forEach(log => {
+                    tbody.innerHTML += `<tr>
+                        <td><strong>${log.action}</strong></td>
+                        <td>${log.time || 'Just now'}</td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function updateSlot(id, status) {
+            const el = document.getElementById(id);
+            const statusText = el.querySelector('.slot-status');
+            if (status === 1) {
+                el.className = 'slot-card available';
+                statusText.innerText = 'FREE';
+            } else {
+                el.className = 'slot-card occupied';
+                statusText.innerText = 'BUSY';
+            }
+        }
+    </script>
+</body>
+</html>

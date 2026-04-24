@@ -10,41 +10,134 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 350px; text-align: center; }
-        .auth-card h2 { margin: 0 0 20px 0; color: #333; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        /* Changed from green to blue */
-        input:focus { border-color: #007bff; outline: none; }
-        /* Changed from green to blue */
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        /* Changed from dark green to dark blue */
-        button:hover { background-color: #0056b3; }
-        .links { margin-top: 20px; font-size: 14px; }
-        /* Changed from green to blue */
-        .links a { color: #007bff; text-decoration: none; }
+        :root {
+            --primary-azure: #0077B6;
+            --text-dark: #343A40;
+        }
+
+        body { 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            background: linear-gradient(rgba(248, 249, 250, 0.4), rgba(248, 249, 250, 0.4)), 
+                        url('./assets/img/floor-with-sky.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px 0;
+        }
+
+        .auth-card { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 40px; 
+            border-radius: 24px; 
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1); 
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center; 
+        }
+
+        .auth-card h2 { 
+            margin: 0 0 10px 0; 
+            color: var(--text-dark); 
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        input { 
+            width: 100%; 
+            padding: 12px 14px; 
+            margin-bottom: 15px; 
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd; 
+            border-radius: 12px; 
+            box-sizing: border-box; 
+            font-size: 15px; 
+            transition: 0.3s;
+        }
+
+        input:focus { 
+            border-color: var(--primary-azure); 
+            outline: none; 
+            box-shadow: 0 0 0 4px rgba(0, 119, 182, 0.1);
+        }
+
+        button { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: var(--primary-azure); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, 0.2);
+        }
+
+        button:hover { 
+            background-color: #005f92; 
+            transform: translateY(-1px);
+        }
+
+        .links { 
+            margin-top: 25px; 
+            font-size: 14px; 
+            color: #666;
+        }
+
+        .links a { 
+            color: var(--primary-azure); 
+            text-decoration: none; 
+            font-weight: 600;
+        }
+
         .links a:hover { text-decoration: underline; }
+
+        .back-home {
+            display: inline-block;
+            margin-top: 15px;
+            color: #888 !important;
+            font-weight: 400 !important;
+        }
     </style>
 </head>
 <body>
 
     <div class="auth-card">
         <h2>Create Account</h2>
+        <p class="subtitle">Join the CTU-Argao Smart Parking Network</p>
+        
         <form id="signup-form">
             <input type="text" id="fullname" placeholder="Full Name" required>
             <input type="email" id="email" placeholder="Email Address" required>
             <input type="password" id="password" placeholder="Password (Min 6 chars)" required>
+            <input type="password" id="confirm-password" placeholder="Confirm Password" required>
             <input type="text" id="rfid" placeholder="RFID Card UID (e.g., 32B85055)" required>
-            <button type="submit">Sign Up</button>
+            <button type="submit">Register Account</button>
         </form>
+
         <div class="links">
             <p>Already have an account? <a href="login.html">Login</a></p>
-            <p><a href="index.html">← Back to Home</a></p>
+            <a href="index.html" class="back-home">← Back to Home</a>
         </div>
     </div>
 
     <script>
-        // 🚨 YOUR FIREBASE CONFIG 🚨
         const firebaseConfig = {
             apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
             databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -55,45 +148,52 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // Handle the Form Submission
         document.getElementById('signup-form').addEventListener('submit', function(e) {
-            e.preventDefault(); // Stop the page from refreshing
+            e.preventDefault(); 
 
-            // 🧹 CLEANUP PHASE: Remove spaces and format inputs before saving
-            // .trim() removes spaces at the very beginning and very end
             const name = document.getElementById('fullname').value.trim();
-            const pass = document.getElementById('password').value;
-            
-            // .replace(/\s+/g, '') destroys ALL spaces, even accidentally typed ones in the middle
             const email = document.getElementById('email').value.replace(/\s+/g, '').toLowerCase();
+            const pass = document.getElementById('password').value;
+            const confirmPass = document.getElementById('confirm-password').value;
             const rfid = document.getElementById('rfid').value.replace(/\s+/g, '').toUpperCase();
 
-            // Check if RFID is empty after removing spaces
+            if (pass !== confirmPass) {
+                Swal.fire("Error", "Passwords do not match!", "error");
+                return;
+            }
+
             if (rfid === "") {
                 Swal.fire("Error", "Please enter a valid RFID code.", "error");
                 return;
             }
 
-            // 1. Create the user securely in Firebase Auth
+            // Firebase Auth Creation
             auth.createUserWithEmailAndPassword(email, pass)
             .then((userCredential) => {
                 const userId = userCredential.user.uid;
 
-                // 2. Save their specific details (including cleaned RFID) to the "users" table
+                // Save profile with "user" role
                 return db.ref('users/' + userId).set({
                     fullName: name,
                     email: email,
-                    rfid_id: rfid // Now guaranteed to be perfect, uppercase, and space-free!
+                    rfid_id: rfid,
+                    role: "user", 
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
                 });
             })
             .then(() => {
-                Swal.fire("Success!", "Account created. You can now login.", "success")
-                .then(() => {
-                    window.location.href = "dashboard.html"; // Send them to the dashboard!
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Account Created!',
+                    text: 'Welcome to the Smart Parking system.',
+                    confirmButtonColor: '#0077B6'
+                }).then(() => {
+                    // Redirect to user dashboard
+                    window.location.href = "user/dashboard.html";
                 });
             })
             .catch((error) => {
-                Swal.fire("Error", error.message, "error");
+                Swal.fire("Registration Failed", error.message, "error");
             });
         });
     </script>

@@ -9,59 +9,186 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 350px; text-align: center; }
-        .auth-card h2 { margin: 0 0 20px 0; color: #333; }
-        input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        input:focus { border-color: #007bff; outline: none; }
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background-color: #0056b3; }
-        .links { margin-top: 20px; font-size: 14px; }
-        .links a { color: #007bff; text-decoration: none; }
+        :root {
+            --primary-azure: #0077B6;
+            --text-dark: #343A40;
+            --foundation-white: #F8F9FA;
+        }
+
+        body { 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            /* Match your home page background */
+            background-image: linear-gradient(rgba(248, 249, 250, 0.4), rgba(248, 249, 250, 0.4)), 
+                        url('./assets/img/floor-with-sky.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+
+        .auth-card { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 40px; 
+            border-radius: 24px; 
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1); 
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 100%; 
+            max-width: 380px; 
+            text-align: center; 
+        }
+
+        .auth-card h2 { 
+            margin: 0 0 10px 0; 
+            color: var(--text-dark); 
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-card p.subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        input { 
+            width: 100%; 
+            padding: 14px; 
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd; 
+            border-radius: 12px; 
+            box-sizing: border-box; 
+            font-size: 16px; 
+            transition: 0.3s;
+        }
+
+        input:focus { 
+            border-color: var(--primary-azure); 
+            outline: none; 
+            box-shadow: 0 0 0 4px rgba(0, 119, 182, 0.1);
+        }
+
+        button { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: var(--primary-azure); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, 0.2);
+        }
+
+        button:hover { 
+            background-color: #005f92; 
+            transform: translateY(-1px);
+        }
+
+        .links { 
+            margin-top: 25px; 
+            font-size: 14px; 
+            color: #666;
+        }
+
+        .links a { 
+            color: var(--primary-azure); 
+            text-decoration: none; 
+            font-weight: 600;
+        }
+
         .links a:hover { text-decoration: underline; }
+
+        .back-home {
+            display: inline-block;
+            margin-top: 15px;
+            color: #888 !important;
+            font-weight: 400 !important;
+        }
     </style>
 </head>
 <body>
 
     <div class="auth-card">
         <h2>Welcome Back</h2>
+        <p class="subtitle">Log in to manage your parking spots</p>
+        
         <form id="login-form">
             <input type="email" id="email" placeholder="Email Address" required>
+            <div style="height: 15px;"></div>
             <input type="password" id="password" placeholder="Password" required>
-            <button type="submit">Login</button>
+            <button type="submit">Login to Dashboard</button>
         </form>
+
         <div class="links">
             <p>Don't have an account? <a href="signup.html">Sign up</a></p>
-            <p><a href="index.html">← Back to Home</a></p>
+            <a href="index.html" class="back-home">← Back to Home</a>
         </div>
     </div>
 
-    <script>
-        // 🚨 YOUR FIREBASE CONFIG 🚨
-        const firebaseConfig = {
-            apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
-            databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            projectId: "smart-parking-capstone-ee166",
-        };
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyATc2QeCvRqLgaeGDcEqC6NCw4Cfid42_U",
+        databaseURL: "https://smart-parking-capstone-ee166-default-rtdb.asia-southeast1.firebasedatabase.app/",
+        projectId: "smart-parking-capstone-ee166",
+    };
 
-        document.getElementById('login-form').addEventListener('submit', function(e) {
-            e.preventDefault(); 
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        e.preventDefault(); 
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
 
-            // Verify with Google
-            auth.signInWithEmailAndPassword(email, pass)
-            .then(() => {
-                window.location.href = "dashboard.html"; // Success! Go to dashboard.
-            })
-            .catch((error) => {
-                Swal.fire("Access Denied", "Incorrect email or password.", "error");
+        // 1. Authenticate the user
+        auth.signInWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+            const user = userCredential.user;
+
+            // 2. Look up the user's role in the database
+            db.ref('users/' + user.uid).once('value')
+            .then((snapshot) => {
+                if (snapshot.exists()) {
+                    const userData = snapshot.val();
+                    
+                    // 3. Redirection Logic
+                    if (userData.role === "admin") {
+                        window.location.href = "admin/admin.html"; 
+                    } else {
+                        window.location.href = "user/dashboard.html"; 
+                    }
+                } else {
+                    // Fallback if user exists in Auth but not in Database
+                    window.location.href = "user/dashboard.html";
+                }
+            });
+        })
+        .catch((error) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Access Denied',
+                text: 'Incorrect email or password.',
+                confirmButtonColor: '#0077B6'
             });
         });
-    </script>
+    });
+</script>
 </body>
 </html>
