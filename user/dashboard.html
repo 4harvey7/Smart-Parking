@@ -16,13 +16,13 @@
             --primary: #0077B6;
             --success: #2DCE89;
             --danger: #F5365C;
-        
         }
+
         body::before {
             content: "";
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45); /* adjust darkness */
+            background: rgba(0, 0, 0, 0.45);
             z-index: -1;
         }
 
@@ -30,21 +30,14 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             background: url('../assets/img/floor-with-sky.jpg') center/cover fixed;
-            
-            /* ADD THESE LINES */
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Ensures body is at least the height of the screen */
+            min-height: 100vh;
         }
 
-        p {
-            color: rgba(255,255,255,0.85);
-        }
+        p { color: rgba(255,255,255,0.85); }
+        h1, h2 { color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); }
 
-        h1, h2 {
-            color: #ffffff;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.4);
-        }
         /* --- LOADING SCREEN --- */
         #loading-screen { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
@@ -66,19 +59,34 @@
         }
 
         .user-profile { display: flex; align-items: center; gap: 10px; }
+        .user-profile span { color: #111; font-weight: 600; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
         /* --- MAIN CONTENT --- */
-       #main-content {
-            flex: 1; /* This pushes the footer down */
+        #main-content {
+            flex: 1;
             padding: 20px 5%;
             max-width: 1200px;
             margin: auto;
-            width: 90%; /* Ensure it spans the width */
+            width: 90%;
         }
 
         .welcome-section { margin: 30px 0; }
         .welcome-section h1 { font-size: 2rem; font-weight: 800; margin: 0; color: var(--primary); }
+
+        /* --- SYSTEM STATUS BAR --- */
+        .system-status-bar {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            border-radius: 14px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .system-status-bar span { color: white; font-weight: 600; font-size: 0.95rem; }
 
         /* --- PARKING GRID --- */
         .parking-grid {
@@ -99,13 +107,10 @@
         }
 
         .slot-card:hover { transform: translateY(-5px); }
-
         .slot-icon { font-size: 50px; margin-bottom: 15px; display: block; }
-
         .slot-name { font-size: 1.2rem; font-weight: 600; color: #666; }
         .slot-status { font-size: 1.5rem; font-weight: 800; margin-top: 5px; }
 
-        /* Status Colors */
         .available { border-color: var(--success); color: var(--success); }
         .occupied { border-color: var(--danger); color: var(--danger); }
 
@@ -116,6 +121,7 @@
             padding: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             overflow: hidden;
+            margin-bottom: 40px;
         }
 
         .history-card h3 { margin-top: 0; margin-bottom: 20px; }
@@ -123,6 +129,16 @@
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 15px; color: #888; font-size: 0.9rem; border-bottom: 1px solid #eee; }
         td { padding: 15px; border-bottom: 1px solid #f9f9f9; font-size: 0.95rem; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .badge-granted { background: #d4f8ed; color: #0a7a4e; }
+        .badge-denied  { background: #fde8ec; color: #b5122e; }
 
         /* --- BUTTONS --- */
         .btn-logout { 
@@ -135,6 +151,7 @@
             .welcome-section h1 { font-size: 1.5rem; }
             .parking-grid { grid-template-columns: 1fr; }
         }
+
         .footer {
             text-align: center;
             padding: 1.5rem;
@@ -142,23 +159,16 @@
             color: #a0aec0;
             font-size: 0.85rem;
             margin-top: 40px;
-            /* position: sticky;
-            bottom: 0;*/
         }
-            .user-profile span {
-        color: #111; /* or white depending on your navbar */
-    }
-
         .footer b { color: white; }
     </style>
 </head>
 <body>
 
-
     <nav class="navbar">
         <div class="user-profile">
             <div id="status-indicator" class="status-dot" style="background: #ccc;"></div>
-            <span id="user-greeting" style="font-weight: 600;">Loading...</span>
+            <span id="user-greeting">Loading...</span>
         </div>
         <button id="logout-btn" class="btn-logout">Sign Out</button>
     </nav>
@@ -167,8 +177,14 @@
         <h2 style="color: var(--primary)">🚗 Smart Parking</h2>
         <p>Finding your spot...</p>
     </div>
-    <div id="main-content">
-        
+
+    <div id="main-content" style="display:none;">
+
+        <!-- System Status Bar -->
+        <div class="system-status-bar" style="margin-top: 20px;">
+            <div id="status-indicator-bar" class="status-dot" style="background:#ccc;"></div>
+            <span id="system-text">Checking system status...</span>
+        </div>
 
         <div class="parking-grid">
             <div id="slot1-ui" class="slot-card">
@@ -176,7 +192,6 @@
                 <div class="slot-name">Parking Slot 1</div>
                 <div class="slot-status">Checking...</div>
             </div>
-
             <div id="slot2-ui" class="slot-card">
                 <span class="slot-icon">🚗</span>
                 <div class="slot-name">Parking Slot 2</div>
@@ -187,7 +202,6 @@
                 <div class="slot-name">Parking Slot 3</div>
                 <div class="slot-status">Checking...</div>
             </div>
-
             <div id="slot4-ui" class="slot-card">
                 <span class="slot-icon">🚗</span>
                 <div class="slot-name">Parking Slot 4</div>
@@ -201,12 +215,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Activity</th>
+                            <th>UID</th>
+                            <th>Status</th>
                             <th>Time</th>
                         </tr>
                     </thead>
                     <tbody id="logsBody">
-                        <tr><td colspan="2" style="text-align:center;">Fetching history...</td></tr>
+                        <tr><td colspan="3" style="text-align:center; color:#aaa;">Fetching history...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -225,13 +240,16 @@
         const db = firebase.database();
 
         let currentUserRfid = null;
+        let lastScanAction = null; // Track last known action to avoid duplicate alerts
+        let slotsData = {};        // Track slot states for full-parking detection
 
+        // ===================== AUTH =====================
         auth.onAuthStateChanged((user) => {
             if (user) {
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
                         const userData = snapshot.val();
-                        currentUserRfid = userData.rfid_id; 
+                        currentUserRfid = userData.rfid_id;
                         document.getElementById('user-greeting').innerText = userData.fullName || "User";
                         document.getElementById('loading-screen').style.display = 'none';
                         document.getElementById('main-content').style.display = 'block';
@@ -243,6 +261,7 @@
             }
         });
 
+        // ===================== LOGOUT =====================
         document.getElementById('logout-btn').addEventListener('click', () => {
             Swal.fire({
                 title: 'Are you sure?',
@@ -254,57 +273,130 @@
                 confirmButtonText: 'Yes, Logout'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    auth.signOut().then(() => {
-                        window.location.replace("../login.html");
-                    });
+                    auth.signOut().then(() => window.location.replace("../login.html"));
                 }
             });
         });
+
+        // ===================== DASHBOARD =====================
         function loadDashboardData() {
-            // Hardware Status
+
+            // --- 1. Hardware Status ---
             db.ref('hardware_status/online').on('value', (snapshot) => {
                 const dot = document.getElementById('status-indicator');
+                const dotBar = document.getElementById('status-indicator-bar');
                 const text = document.getElementById('system-text');
-                if (snapshot.val() === true) {
-                    dot.style.background = 'var(--success)';
-                    text.innerText = 'System is live and ready.';
-                } else {
-                    dot.style.background = 'var(--danger)';
-                    text.innerText = 'System is currently offline.';
-                }
+                const isOnline = snapshot.val() === true;
+
+                dot.style.background = isOnline ? 'var(--success)' : 'var(--danger)';
+                dotBar.style.background = isOnline ? 'var(--success)' : 'var(--danger)';
+                text.innerText = isOnline ? 'System is live and ready.' : 'System is currently offline.';
             });
 
-           // Live Slots (UPDATED TO 4 SLOTS)
+            // --- 2. Live Slots ---
             db.ref('slots').on('value', (snapshot) => {
                 const data = snapshot.val();
-                if (data) {
-                    updateSlot('slot1-ui', data.slot1);
-                    updateSlot('slot2-ui', data.slot2);
-                    updateSlot('slot3-ui', data.slot3);
-                    updateSlot('slot4-ui', data.slot4);
+                if (!data) return;
+
+                slotsData = data;
+                updateSlot('slot1-ui', data.slot1);
+                updateSlot('slot2-ui', data.slot2);
+                updateSlot('slot3-ui', data.slot3);
+                updateSlot('slot4-ui', data.slot4);
+
+                // Check if ALL slots are full (0 = occupied, 1 = free)
+                const allFull = [data.slot1, data.slot2, data.slot3, data.slot4].every(s => s === 0);
+                if (allFull) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'warning',
+                        title: '🚫 Parking Full!',
+                        text: 'All slots are currently occupied.',
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true,
+                    });
                 }
             });
 
-            // Logs
-            db.ref('logs').on('value', (snapshot) => {
+            // --- 3. Latest Scan Notification (gate open / card denied) ---
+            // FIX: Listen to /latest_scan written by the ESP8266
+            db.ref('latest_scan').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                const action = data.action || '';
+                const uid    = data.uid || '';
+                const error  = data.error || '';
+
+                // Only fire alert when action actually changes (avoid re-firing on page load repeat)
+                if (action === lastScanAction) return;
+                lastScanAction = action;
+
+                if (action === 'Access Granted') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: '✅ Gate Opened!',
+                        text: `Card ${uid} was granted access.`,
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true,
+                    });
+                } else if (action === 'Invalid Card') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: '❌ Access Denied',
+                        text: `Card ${uid} is not registered in the system.`,
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true,
+                    });
+                }
+
+                // Also push into the local logs table
+                addLogRow(uid, action);
+            });
+
+            // --- 4. Recent Activity from /logs (if you save logs there) ---
+            // FIX: Also read from /latest_scan since ESP8266 writes there.
+            // If you want persistent history, save logs from ESP8266 to /logs using Firebase.RTDB.pushJSON
+            db.ref('logs').orderByChild('uid').on('value', (snapshot) => {
                 const tbody = document.getElementById('logsBody');
-                tbody.innerHTML = ''; 
                 let logs = [];
+
                 snapshot.forEach(child => {
                     const val = child.val();
-                    if (val.uid === currentUserRfid) logs.push(val);
+                    // Show all logs OR filter by current user's RFID if you want personal history only
+                    logs.push(val);
                 });
-                logs.reverse().slice(0, 5).forEach(log => {
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#aaa;">No activity yet.</td></tr>';
+                    return;
+                }
+
+                logs.reverse().slice(0, 10).forEach(log => {
+                    const badge = log.action === 'Access Granted'
+                        ? `<span class="badge badge-granted">Granted</span>`
+                        : `<span class="badge badge-denied">Denied</span>`;
                     tbody.innerHTML += `<tr>
-                        <td><strong>${log.action}</strong></td>
-                        <td>${log.time || 'Just now'}</td>
+                        <td><code>${log.uid || '—'}</code></td>
+                        <td>${badge}</td>
+                        <td>${log.time || formatTime(log.timestamp) || 'Just now'}</td>
                     </tr>`;
                 });
             });
         }
 
+        // ===================== HELPERS =====================
         function updateSlot(id, status) {
             const el = document.getElementById(id);
+            if (!el) return;
             const statusText = el.querySelector('.slot-status');
             if (status === 1) {
                 el.className = 'slot-card available';
@@ -314,9 +406,37 @@
                 statusText.innerText = 'BUSY';
             }
         }
+
+        // Adds a row to the logs table from live latest_scan updates
+        function addLogRow(uid, action) {
+            const tbody = document.getElementById('logsBody');
+            // Remove "no activity" placeholder row if present
+            if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+            const badge = action === 'Access Granted'
+                ? `<span class="badge badge-granted">Granted</span>`
+                : `<span class="badge badge-denied">Denied</span>`;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code>${uid || '—'}</code></td>
+                <td>${badge}</td>
+                <td>${new Date().toLocaleTimeString()}</td>
+            `;
+            tbody.prepend(row); // Most recent on top
+
+            // Keep max 10 rows
+            while (tbody.rows.length > 10) tbody.deleteRow(tbody.rows.length - 1);
+        }
+
+        function formatTime(ts) {
+            if (!ts) return null;
+            return new Date(ts).toLocaleTimeString();
+        }
     </script>
+
     <footer class="footer">
-    &copy; 2026 Developed by <b>Rodz Harvey D. Licayan</b> | BSIT CTU-Argao
+        &copy; 2026 Developed by <b>Rodz Harvey D. Licayan</b> | BSIT CTU-Argao
     </footer>
 </body>
 </html>
