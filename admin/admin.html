@@ -188,7 +188,13 @@
                 if (snap.exists()) {
                     snap.forEach(log => {
                         const l = log.val();
-                        logHtml += `<p style="border-bottom:1px solid #eee; padding:10px; margin:0;">[${l.timestamp || 'N/A'}] ${l.message || 'No data'}</p>`;
+                        logHtml += `
+                            <p style="border-bottom:1px solid #eee; padding:10px; margin:0;">
+                                [${l.time || 'N/A'}] 
+                                UID: ${l.uid || 'Unknown'} 
+                                - ${l.action || 'No Action'}
+                            </p>
+                            `;
                     });
                 } else {
                     logHtml += '<p>No logs found.</p>';
