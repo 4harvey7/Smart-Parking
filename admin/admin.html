@@ -104,7 +104,7 @@
 
             slotIds.forEach(slotId => {
                 db.ref('slots/' + slotId).on('value', snap => {
-                    const isOccupied = snap.val() === 1;
+                    const isOccupied = snap.val() === 0;
 
                     // find or create slot card
                     let slotDiv = document.getElementById(slotId);
