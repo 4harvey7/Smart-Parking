@@ -3,6 +3,8 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Servo.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 // Firebase helpers
 #include "addons/TokenHelper.h"
@@ -30,197 +32,112 @@ Servo gateServo;
 
 // Firebase
 FirebaseData fbdo;
-FirebaseData fbdo2; // Separate stream for slots to avoid conflicts
+FirebaseData fbdo2; 
 FirebaseAuth auth;
 FirebaseConfig config;
 
-bool signupOK = false;
+// NTP Time Setup
+WiFiUDP ntpUDP;
+// Offset for Philippines (UTC+8) = 8 * 3600 = 28800
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);
 
-// ---------------- ERROR LOGGER ----------------
-void logError(String msg) {
-  Serial.println("\n[ERROR DETECTED] " + msg);
-  if (Firebase.ready() && signupOK) {
-    Firebase.RTDB.setString(&fbdo, "/latest_scan/error", msg);
-  }
-}
+bool signupOK = false;
 
 // ---------------- WIFI ----------------
 void connectWiFi() {
   Serial.print("[WAIT] WiFi connecting");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempts = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    attempts++;
-    if (attempts > 20) {
-      logError("WiFi connection timeout");
-      return;
-    }
   }
   Serial.println("\n[OK] WiFi Connected");
+  timeClient.begin(); // Start NTP
+}
+
+// ---------------- GET FORMATTED TIME ----------------
+String getFormattedDateTime() {
+  timeClient.update();
+  time_t rawtime = timeClient.getEpochTime();
+  struct tm * ti;
+  ti = localtime(&rawtime);
+
+  char buffer[25];
+  // Formats to: YYYY-MM-DD HH:MM:SS
+  sprintf(buffer, "%04d-%02d-%02d %02d:%02d:%02d", 
+          ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday, 
+          ti->tm_hour, ti->tm_min, ti->tm_sec);
+  return String(buffer);
 }
 
 // ---------------- CHECK IF PARKING IS FULL ----------------
 bool isParkingFull() {
   if (Firebase.RTDB.getJSON(&fbdo2, "/slots")) {
-    String result = fbdo2.payload();
-    result.trim();
-    Serial.println("[DEBUG] Slots data: " + result);
-
-    // Count how many slots are free (value = 1 means FREE, 0 means OCCUPIED)
-    // If NO slot has value 1, parking is full
-    // Simple check: if "1" does not appear in the slots JSON, all are occupied
-    // But safer: count slot1..slot4 individually
-
     FirebaseJson json;
-    json.setJsonData(result);
-
-    FirebaseJsonData slot1, slot2, slot3, slot4;
-    json.get(slot1, "slot1");
-    json.get(slot2, "slot2");
-    json.get(slot3, "slot3");
-    json.get(slot4, "slot4");
-
-    int s1 = slot1.success ? slot1.to<int>() : 0;
-    int s2 = slot2.success ? slot2.to<int>() : 0;
-    int s3 = slot3.success ? slot3.to<int>() : 0;// kuapl na sensor bali kupal
-    int s4 = slot4.success ? slot4.to<int>() : 0;
-
-    Serial.printf("[SLOTS] slot1=%d slot2=%d slot3=%d slot4=%d\n", s1, s2, s3, s4);
-
-    // If ALL slots are 0 (occupied), parking is full
-    if (s1 == 0 && s2 == 0 && s3 == 0 && s4 == 0) {
-      Serial.println("[PARKING] ALL SLOTS FULL");
-      return true;
-    }
-
-    return false;
-
-  } else {
-    logError("Failed to fetch slots: " + fbdo2.errorReason());
-    // If we can't check, allow entry to be safe (or return true to block — your choice)
-    return false;
+    json.setJsonData(fbdo2.payload());
+    FirebaseJsonData s1, s2, s3, s4;
+    json.get(s1, "slot1"); json.get(s2, "slot2");
+    json.get(s3, "slot3"); json.get(s4, "slot4");
+    if (s1.to<int>() == 0 && s2.to<int>() == 0 && s3.to<int>() == 0 && s4.to<int>() == 0) return true;
   }
+  return false;
 }
 
-// ---------------- SETUP ----------------
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n===== RFID GATE + FIREBASE START =====");
-
   SPI.begin();
   rfid.PCD_Init();
-  Serial.println("[OK] RFID Ready");
-
   gateServo.attach(SERVO_PIN);
-  gateServo.write(CLOSE_ANGLE); // SAFE DEFAULT
-
+  gateServo.write(CLOSE_ANGLE); 
   connectWiFi();
 
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  config.token_status_callback = tokenStatusCallback;
-
-  if (Firebase.signUp(&config, &auth, "", "")) {
-    Serial.println("[OK] Firebase SignUp Success");
-    signupOK = true;
-  } else {
-    logError("Firebase SignUp Failed");
-  }
-
+  if (Firebase.signUp(&config, &auth, "", "")) signupOK = true;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
-
-  Serial.println("[OK] Firebase Ready\n");
 }
 
-// ---------------- LOOP ----------------
 void loop() {
+  if (WiFi.status() != WL_CONNECTED || !Firebase.ready()) return;
 
-  // WIFI CHECK
-  if (WiFi.status() != WL_CONNECTED) {
-    logError("WiFi Disconnected");
-    connectWiFi();
-    return;
-  }
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) return;
 
-  // FIREBASE CHECK
-  if (!signupOK || !Firebase.ready()) {
-    delay(500);
-    return;
-  }
-
-  // RFID CHECK
-  if (!rfid.PICC_IsNewCardPresent()) return;
-  if (!rfid.PICC_ReadCardSerial()) {
-    logError("RFID read failed");
-    return;
-  }
-
-  // ---------------- GET UID ----------------
   String uid = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     if (rfid.uid.uidByte[i] < 0x10) uid += "0";
     uid += String(rfid.uid.uidByte[i], HEX);
   }
   uid.toUpperCase();
-  uid.trim();
-
-  Serial.println("\n[SCAN] UID: " + uid);
   rfid.PICC_HaltA();
 
-  // ---------------- FIREBASE CARD SEARCH ----------------
   bool cardExists = false;
   bool openGate = false;
   String actionMsg = "Invalid Card";
 
   if (Firebase.RTDB.getJSON(&fbdo, "/users")) {
-    String result = fbdo.payload();
-    result.trim();
-    Serial.println("[DEBUG] Searching for UID: " + uid);
-
-    if (result.indexOf(uid) != -1) {
-      cardExists = true;
-      Serial.println("[DEBUG] UID found!");
-    } else {
-      Serial.println("[DEBUG] UID not found");
-      logError("Card not found in database");
-    }
-  } else {
-    logError("Firebase fetch failed: " + fbdo.errorReason());
+    if (fbdo.payload().indexOf(uid) != -1) cardExists = true;
   }
 
-  // ---------------- PARKING FULL CHECK ----------------
-  // Card is valid BUT we still check if parking is full before opening
   if (cardExists) {
-    if (isParkingFull()) {
-      actionMsg = "Parking Full";
-      openGate = false; // KEEP GATE CLOSED even for valid card
-      Serial.println("[GATE] STAY CLOSED (PARKING FULL)");
-    } else {
-      actionMsg = "Access Granted";
-      openGate = true;
-    }
+    if (isParkingFull()) actionMsg = "Parking Full";
+    else { actionMsg = "Access Granted"; openGate = true; }
   }
 
-  Serial.println("[ACTION] " + actionMsg);
+  // ---------------- SAVE LOG AS STRING ----------------
+  String currentDateTime = getFormattedDateTime();
+  FirebaseJson logData;
+  logData.add("uid", uid);
+  logData.add("action", actionMsg);
+  logData.add("time", currentDateTime); // Stores as "YYYY-MM-DD HH:MM:SS"
 
-  // ---------------- SAVE LOG ----------------
-  Firebase.RTDB.setString(&fbdo, "/latest_scan/uid", uid);
-  Firebase.RTDB.setString(&fbdo, "/latest_scan/action", actionMsg);
+  Firebase.RTDB.setJSON(&fbdo, "/latest_scan", &logData);
+  Firebase.RTDB.pushJSON(&fbdo, "/logs", &logData);
 
-  // ---------------- SERVO CONTROL ----------------
   if (openGate) {
-    Serial.println("[GATE] OPEN");
     gateServo.write(OPEN_ANGLE);
     delay(5000);
     gateServo.write(CLOSE_ANGLE);
-    Serial.println("[GATE] CLOSED");
-  } else {
-    Serial.println("[GATE] STAY CLOSED");
   }
-
   delay(500);
 }

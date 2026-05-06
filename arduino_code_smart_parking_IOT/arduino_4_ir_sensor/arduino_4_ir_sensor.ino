@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <Firebase_ESP_Client.h>
+#include <Servo.h>
 
 // Firebase helper (REQUIRED)
 #include "addons/TokenHelper.h"
@@ -18,6 +19,12 @@
 #define IR2_PIN D2
 #define IR3_PIN D5
 #define IR4_PIN D6
+
+// NEW IR SENSOR + SERVO
+#define IR5_PIN D7
+#define SERVO_PIN D0
+
+Servo gateServo;
 
 // Firebase objects
 FirebaseData fbdo;
@@ -58,7 +65,14 @@ void setup() {
   pinMode(IR2_PIN, INPUT);
   pinMode(IR3_PIN, INPUT);
   pinMode(IR4_PIN, INPUT);
+  pinMode(IR5_PIN, INPUT);
+
   Serial.println("[OK] Sensors Ready");
+
+  // SERVO INIT
+  gateServo.attach(SERVO_PIN);
+  gateServo.write(0); // CLOSED
+  Serial.println("[OK] Servo Ready");
 
   connectWiFi();
 
@@ -66,7 +80,6 @@ void setup() {
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
 
-  // OPTIONAL DEBUG
   config.token_status_callback = tokenStatusCallback;
 
   // SIGN IN (ANONYMOUS MODE)
@@ -96,9 +109,20 @@ void loop() {
   int s2 = digitalRead(IR2_PIN);
   int s3 = digitalRead(IR3_PIN);
   int s4 = digitalRead(IR4_PIN);
+  int s5 = digitalRead(IR5_PIN);
 
-  Serial.printf("S1:%d | S2:%d | S3:%d | S4:%d\n", s1, s2, s3, s4);
+  Serial.printf("S1:%d | S2:%d | S3:%d | S4:%d | GATE:%d\n", s1, s2, s3, s4, s5);
 
+  // ---------------- SERVO LOGIC ----------------
+  if (s5 == LOW) {
+    gateServo.write(0);   // OPEN
+    Serial.println("[GATE] OPEN");
+  } else {
+    gateServo.write(90);    // CLOSE
+    Serial.println("[GATE] CLOSED");
+  }
+
+  // ---------------- FIREBASE UPDATE ----------------
   if (signupOK && Firebase.ready()) {
 
     if (s1!=last1 || s2!=last2 || s3!=last3 || s4!=last4) {
